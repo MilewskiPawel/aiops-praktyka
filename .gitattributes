@@ -1,0 +1,2 @@
+# Skrypty powłoki zawsze z końcami linii LF — z CRLF bash i shellcheck na Windows się wykładają
+*.sh text eol=lf
