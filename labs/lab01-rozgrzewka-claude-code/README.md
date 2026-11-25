@@ -8,7 +8,7 @@
 
 - sklonowany fork repo ([`setup/README.md`](../../setup/README.md), krok 0)
 - zainstalowane Claude Code ([`setup/README.md`](../../setup/README.md#narzędzia-na-laptopie); Windows: w WSL2)
-- konto szkoleniowe `uczNN@sages.io` (dane od prowadzącego)
+- konto szkoleniowe Sages `devN@sages.training` (adres i hasło na karcie od prowadzącego)
 
 ## 1. Uruchom i sprawdź konto
 
@@ -23,7 +23,7 @@ Przy pierwszym uruchomieniu zaloguj się kontem szkoleniowym (otworzy się przeg
 /status
 ```
 
-✅ Widzisz konto `uczNN@sages.io`, a nie konto prywatne ani klucz API.
+✅ Widzisz konto `devN@sages.training`, a nie konto prywatne ani klucz API.
 
 Wpisz `/help`, żeby zobaczyć dostępne komendy.
 

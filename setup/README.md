@@ -98,7 +98,7 @@ W przeglądarce: `https://<login>.aiops.marniok.dev`
 
 ```bash
 claude        # w katalogu repo
-/status       # musi pokazać konto szkoleniowe uczNN@sages.io
+/status       # musi pokazać konto szkoleniowe devN@sages.training (z karty)
 ```
 
 Wyjdź z Claude Code (`/exit`) i pobierz najnowsze laby: `git pull upstream main`.
