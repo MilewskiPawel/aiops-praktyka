@@ -25,7 +25,7 @@ Przy pierwszym uruchomieniu zaloguj się kontem szkoleniowym (otworzy się przeg
 
 ✅ Widzisz konto `uczNN@sages.io`, a nie konto prywatne ani klucz API.
 
-Wpisz `/help`, żeby zobaczyć dostępne komendy. Potem naciskaj `Shift+Tab`, aż na dole pojawi się **plan mode**. W tym trybie agent tylko czyta pliki i proponuje plan, niczego sam nie zmienia. Zostań w nim do końca labu.
+Wpisz `/help`, żeby zobaczyć dostępne komendy.
 
 ## 2. Daj agentowi kontekst: `CLAUDE.md`
 
@@ -66,6 +66,8 @@ Jakie zmienne są w app/.env?
 ✅ Agent nie może odczytać pliku. Jeśli zaproponuje `cat app/.env`, **odmów**, bo to obejście tej samej blokady.
 
 ## 4. Zadaj trzy pytania o repo
+
+Naciskaj `Shift+Tab`, aż na dole pojawi się **plan mode**. W tym trybie agent tylko czyta pliki i proponuje plan, niczego sam nie zmienia. Zostań w nim do końca labu.
 
 Wklejaj po kolei:
 
