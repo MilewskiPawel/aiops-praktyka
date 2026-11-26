@@ -1,0 +1,139 @@
+# orders-api-lab: Deployment zbudowany na podstawie chartu app/deploy/helm/kantyna
+# (templates/deployment-orders-api.yaml + values.yaml) dla release'u "kantyna".
+# Klaster: EKS v1.36.5 (kubectl version). Namespace: pawel-m (podawany przy apply, -n).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-api-lab
+  labels:
+    # Inne etykiety niż w chartcie (name=orders-api, instance=kantyna), żeby Service
+    # kantyna-orders-api nie kierował ruchu do tych podów, a selektory się nie nakładały.
+    app.kubernetes.io/name: orders-api-lab
+    app.kubernetes.io/instance: kantyna-lab
+    app.kubernetes.io/component: orders-api
+    app.kubernetes.io/part-of: kantyna
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orders-api-lab
+      app.kubernetes.io/instance: kantyna-lab
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orders-api-lab
+        app.kubernetes.io/instance: kantyna-lab
+        app.kubernetes.io/component: orders-api
+        app.kubernetes.io/part-of: kantyna
+        app.kubernetes.io/version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      # ServiceAccount z chartu (kantyna.serviceAccountName dla orders-api).
+      serviceAccountName: kantyna-orders-api
+      securityContext:            # global.podSecurityContext
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: orders-api
+          # Obraz taki jak w działającym release'ie (kubectl get deploy -o wide);
+          # w values.yaml jest tylko placeholder rejestru i tag 0.0.0-dev.
+          image: "574921529806.dkr.ecr.eu-central-1.amazonaws.com/kantyna/orders-api:1.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            # kantyna.commonEnv
+            - name: AWS_REGION
+              value: "eu-central-1"
+            - name: QUEUE_URL
+              value: ""
+            - name: RECEIPTS_BUCKET
+              value: ""
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: ""
+            - name: OTEL_SERVICE_NAME
+              value: "orders-api"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.namespace=kantyna,service.version=1.0.0,deployment.environment=dev,k8s.namespace.name=pawel-m,k8s.pod.name=$(POD_NAME)"
+            - name: APP_VERSION
+              value: "1.0.0"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: FLAGS_FILE
+              value: /etc/kantyna/flags/flags.json
+            # usługi zależne
+            - name: PAYMENTS_URL
+              value: "http://kantyna-payments:8080"
+            # dane do bazy z istniejącego Secretu kantyna-db (kantyna.dbSecretName), nie jawnie
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: kantyna-db
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kantyna-db
+                  key: password
+            - name: DATABASE_URL
+              value: "postgresql://$(DB_USER):$(DB_PASSWORD)@kantyna-postgres:5432/kantyna"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:                # ordersApi.resources
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          securityContext:          # global.containerSecurityContext
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: flags
+              mountPath: /etc/kantyna/flags
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: flags
+          configMap:
+            name: kantyna-flags
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
