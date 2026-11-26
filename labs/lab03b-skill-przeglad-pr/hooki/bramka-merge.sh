@@ -3,7 +3,7 @@
 # Warunki: świeży przegląd z werdyktem MERGE, czysty diff (reguły bez modelu), zielone CI.
 # Kod 2 = komenda się nie wykona, a stderr wraca do Claude jako powód.
 
-cmd=$(jq -r '.tool_input.command // empty')
+cmd=$(jq -r '.tool_input.command // empty' | tr -d '\r')   # tr: jq.exe na Windowsie kończy linie CRLF
 
 # Merge przez API omija warunki, więc nie przechodzi wcale
 if grep -qE 'gh api' <<<"$cmd" && grep -qE '/merge([^a-z]|$)' <<<"$cmd"; then

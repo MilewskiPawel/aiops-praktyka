@@ -6,7 +6,8 @@
 
 ## Zanim zaczniesz
 
-- fork z lab03, `gh` zalogowane, `jq` (`jq --version`; macOS: `brew install jq`, Ubuntu/WSL: `sudo apt install jq`)
+- fork z lab03, `gh` zalogowane, `jq` (`jq --version`; macOS: `brew install jq`, Ubuntu/WSL: `sudo apt install jq`, Windows bez WSL: `winget install jqlang.jq` i nowy terminal)
+- WSL: `jq` i `gh` instalujesz w WSL (nie w Windowsie), a fork klonujesz do katalogu domowego w WSL (`~/...`), nie do `/mnt/c/...`
 - `GH_REPO` wskazuje **Twój fork**, a Claude Code uruchamiasz z tego samego terminala, w katalogu forka
 
 ```bash
@@ -155,7 +156,7 @@ W `.claude/settings.json` usuń z `deny` wpis `"Bash(gh pr merge:*)"` (`review` 
     {
       "matcher": "Bash",
       "hooks": [
-        { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/bramka-merge.sh" }
+        { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/bramka-merge.sh\"" }
       ]
     }
   ]
@@ -253,4 +254,6 @@ git push
 | PR 1: „przegląd starszy niż ostatni commit” | po zmianie w PR-ze puść jeszcze raz `/przeglad-pr 1` |
 | PR 1: „checki CI nie są zielone albo ich brak” | CI jeszcze leci (`gh pr checks 1 --watch`) albo Twój `ci.yml` z lab03 nie ma wyzwalacza `pull_request`. Bez checków bramka blokuje: to celowe |
 | `gh pr merge` pyta o metodę merge | poproś agenta o `--squash` |
-| `jq: command not found` w komunikacie hooka | zainstaluj `jq` (patrz „Zanim zaczniesz”) |
+| `jq: command not found` w komunikacie hooka | zainstaluj `jq` (patrz „Zanim zaczniesz”); w WSL sprawdź `which jq` w WSL, nie w PowerShellu |
+| `$'\r': command not found` albo `bash\r` przy hooku | skrypt ma końce linii Windows (CRLF): `sed -i 's/\r$//' .claude/hooks/bramka-merge.sh`; repo trzymaj w WSL, nie na `/mnt/c` |
+| Windows: `gh pr merge 2` kończy się „podaj numer PR-a wprost” | stara wersja skryptu bez `tr -d '\r'` w pierwszej linii: skopiuj go ponownie z `labs/` |
