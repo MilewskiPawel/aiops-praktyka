@@ -133,10 +133,13 @@ jobs:
         run: aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
 
       - name: helm upgrade
+        # Helm 4 robi server-side apply. CI jest źródłem prawdy dla obrazów, więc
+        # przejmujemy pola, które ktoś zmienił ręcznie (np. kubectl set image).
         run: |
           helm upgrade kantyna app/deploy/helm/kantyna \
             --namespace "$K8S_NAMESPACE" \
             --reuse-values \
+            --force-conflicts \
             --set global.imageRegistry="$ECR_REGISTRY" \
             --set global.imageTag="$GITHUB_SHA"
 
