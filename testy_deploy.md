@@ -28,6 +28,10 @@ W `.github/workflows/ci.yml` do `helm upgrade` doszła flaga `--force-conflicts`
 
 Skutek: najbliższy deploy przywróci `web` na obraz `pawel-m/kantyna/web:<SHA>`. Jeśli ręczne `1.0.0` było świadomym rollbackiem, najpierw trzeba wycofać zmianę w kodzie i dopiero potem pushować.
 
+**Ryzyko przy wprowadzaniu poprawki:** flagę `--force-conflicts` wpisaliśmy z pamięci o Helm 4. Nie sprawdziliśmy jej na v4.3.0 przed pushem, bo lokalnie nie było `helm`. Dopiero pierwszy run CI z poprawką mógł pokazać, czy Helm tę flagę przyjmie. Przy podobnych zmianach najpierw trzeba sprawdzić flagę na wersji z pipeline'u (np. `helm upgrade --help | grep force-conflicts` na Helm v4.3.0), a dopiero potem pushować na `main`.
+
+**Wynik:** run `45823647104` (commit `329f749`) skończył się sukcesem we wszystkich jobach, łącznie z `helm upgrade`, rollout status i smoke testem `/healthz`. Flaga działa na v4.3.0. `kantyna-web` działa na `pawel-m/kantyna/web:329f749…`, a w managedFields pole `image` należy już tylko do `helm` (wpisu `kubectl.exe` nie ma).
+
 Alternatywa, której nie wybraliśmy: `--server-side=false` (klasyczny 3-way merge jak w Helm 3). Taki merge po cichu nadpisuje dryf i nie mówi, że pole zmienił ktoś inny.
 
 ## Weryfikacja po kolejnym runie
