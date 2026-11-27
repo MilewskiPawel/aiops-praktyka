@@ -37,7 +37,7 @@
 | 15:43 | Claude (na polecenie użytkownika) | **Zmiana:** `kubectl -n pawel-m rollout restart deploy/kantyna-orders-api` (runbook KantynaDBPoolExhausted, akcja safe) | Rollout zakończony ok. 15:43:40; nowe pody `7877648c74-mgrz4` i `-p24sc` 1/1 Ready, stare usunięte |
 | 15:44 | Claude | Weryfikacja po restarcie: `setup/check.sh`, logi orders-api | **SUKCES: 11/11**; w logach `Order created` i `POST /pay → 200 OK`, brak „couldn't get a connection” |
 | 15:50 | Claude | Prześledzenie pochodzenia flag: `app/deploy/helm/kantyna/values.yaml` (git), `managedFields` ConfigMapu, `audit.jsonl` agenta | W git (`5c02737`, jedyny commit values.yaml) flagi są `false`; `true` pojawiło się tylko w klastrze przez `kubectl patch` (14:26:56 UTC) — poza Helmem i poza git. Agent z lab06 tylko odczytywał flagi (reset odrzucony), nie ustawiał `true` |
-| 15:5x | Claude | Branch `fix/flags-revert-db-pool-leak`, PR do forka: komentarz ostrzegawczy w `values.yaml` + dziennik incydentu | link do PR w komentarzu po utworzeniu |
+| 15:5x | Claude | Branch `fix/flags-revert-db-pool-leak`, PR do forka: komentarz ostrzegawczy w `values.yaml` + dziennik incydentu | PR: https://github.com/MilewskiPawel/aiops-praktyka/pull/4 |
 | _HH:MM_ | _kto_ | Rozwiązanie / potwierdzenie powrotu do normy | _link do metryk_ |
 
 ## Hipotezy
