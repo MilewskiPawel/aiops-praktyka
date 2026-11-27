@@ -1,0 +1,173 @@
+# Pipeline Kantyny dla Azure Pipelines. Odpowiednik .github/workflows/ci.yml.
+#
+# Wymagania po stronie Azure DevOps:
+#   - rozszerzenie "AWS Toolkit for Azure DevOps" (zadanie AWSShellScript@1),
+#   - service connection typu AWS z włączonym OIDC (bez kluczy), nazwa jak awsServiceConnection niżej,
+#     wskazująca rolę IAM, która ufa issuerowi Azure DevOps (nie GitHubowi, patrz infra/ci-oidc),
+#   - variable group "kantyna" ze zmiennymi K8S_NAMESPACE i ECR_REGISTRY.
+
+trigger:
+  # Jak cancel-in-progress: false w GitHub Actions: pushe na main czekają, nie przerywają trwającego deployu.
+  batch: true
+  branches:
+    include: [main]
+  paths:
+    include:
+      - app
+      - azure-pipelines.yml
+
+pr:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - app
+      - azure-pipelines.yml
+
+variables:
+  - group: kantyna
+  - name: AWS_REGION
+    value: eu-central-1
+  - name: EKS_CLUSTER
+    value: aiops
+  - name: HELM_VERSION
+    value: v4.3.0
+  # Nazwa service connection musi być znana w czasie kompilacji YAML, dlatego nie trafia do variable group.
+  - name: awsServiceConnection
+    value: aws-kantyna-oidc
+  - name: isMainPush
+    value: ${{ and(eq(variables['Build.SourceBranch'], 'refs/heads/main'), ne(variables['Build.Reason'], 'PullRequest')) }}
+
+pool:
+  vmImage: ubuntu-24.04
+
+stages:
+  - stage: test
+    displayName: Testy
+    jobs:
+      - job: test_orders_api
+        displayName: test orders-api
+        timeoutInMinutes: 10
+        steps:
+          - checkout: self
+            persistCredentials: false
+            fetchDepth: 1
+
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: "3.12"
+
+          - script: python -m pip install --disable-pip-version-check "uv>=0.8,<1"
+            displayName: install uv
+
+          - script: |
+              uv sync --locked
+              uv run pytest -q
+            displayName: pytest
+            workingDirectory: app/orders-api
+
+      - job: test_payments
+        displayName: test payments
+        timeoutInMinutes: 10
+        steps:
+          - checkout: self
+            persistCredentials: false
+            fetchDepth: 1
+
+          - task: GoTool@0
+            inputs:
+              version: "1.23.12"
+
+          - script: go test ./...
+            displayName: go test
+            workingDirectory: app/payments
+
+  - stage: build
+    displayName: Build obrazów
+    dependsOn: test
+    condition: and(succeeded(), eq(variables.isMainPush, 'True'))
+    jobs:
+      - job: build
+        displayName: build
+        timeoutInMinutes: 20
+        strategy:
+          matrix:
+            orders_api: { service: orders-api }
+            payments: { service: payments }
+            worker: { service: worker }
+            web: { service: web }
+        steps:
+          - checkout: self
+            persistCredentials: false
+            fetchDepth: 1
+
+          - task: AWSShellScript@1
+            displayName: build i push $(service)
+            inputs:
+              awsCredentials: ${{ variables.awsServiceConnection }}
+              regionName: $(AWS_REGION)
+              scriptType: inline
+              inlineScript: |
+                set -euo pipefail
+                aws ecr get-login-password --region "$AWS_REGION" \
+                  | docker login --username AWS --password-stdin "${ECR_REGISTRY%%/*}"
+                docker buildx create --use --name kantyna >/dev/null
+                docker buildx build "app/$(service)" \
+                  --platform linux/amd64 \
+                  --build-arg APP_VERSION="$(Build.SourceVersion)" \
+                  --build-arg APP_VARIANT=stable \
+                  --tag "$ECR_REGISTRY/kantyna/$(service):$(Build.SourceVersion)" \
+                  --push
+            env:
+              ECR_REGISTRY: $(ECR_REGISTRY)
+
+  - stage: deploy
+    displayName: Deploy na EKS
+    dependsOn: build
+    condition: and(succeeded(), eq(variables.isMainPush, 'True'))
+    jobs:
+      - job: deploy
+        displayName: deploy
+        timeoutInMinutes: 15
+        steps:
+          - checkout: self
+            persistCredentials: false
+            fetchDepth: 1
+
+          - task: HelmInstaller@1
+            inputs:
+              helmVersionToInstall: $(HELM_VERSION)
+
+          - task: AWSShellScript@1
+            displayName: helm upgrade, rollout, smoke test
+            inputs:
+              awsCredentials: ${{ variables.awsServiceConnection }}
+              regionName: $(AWS_REGION)
+              scriptType: inline
+              inlineScript: |
+                set -euo pipefail
+                aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
+
+                # --force-conflicts: patrz testy_deploy.md (konflikt z ręcznym kubectl set image).
+                helm upgrade kantyna app/deploy/helm/kantyna \
+                  --namespace "$K8S_NAMESPACE" \
+                  --reuse-values \
+                  --force-conflicts \
+                  --set global.imageRegistry="$ECR_REGISTRY" \
+                  --set global.imageTag="$(Build.SourceVersion)"
+
+                for d in web orders-api payments worker; do
+                  kubectl -n "$K8S_NAMESPACE" rollout status "deploy/kantyna-$d" --timeout=5m
+                done
+
+                for url in \
+                  http://127.0.0.1:8080/healthz \
+                  http://kantyna-orders-api:8000/healthz \
+                  http://kantyna-payments:8080/healthz; do
+                  echo ">> $url"
+                  kubectl -n "$K8S_NAMESPACE" exec deploy/kantyna-web -c web -- wget -qO- -T 5 "$url"
+                  echo
+                done
+            env:
+              K8S_NAMESPACE: $(K8S_NAMESPACE)
+              ECR_REGISTRY: $(ECR_REGISTRY)

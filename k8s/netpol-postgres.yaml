@@ -1,0 +1,29 @@
+# Do Postgresa wolno wejść tylko z podów orders-api (ten sam namespace), tylko na 5432/TCP.
+# Cały inny ruch przychodzący do kantyna-postgres jest odrzucany. Ruch wychodzący bez zmian.
+# Tylko orders-api ma DATABASE_URL; payments, web i worker do bazy nie łączą się.
+# Uwaga: kubectl exec / port-forward nie przechodzą przez sieć podów, więc dalej działają.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kantyna-postgres-ingress
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: kantyna
+    app.kubernetes.io/component: postgres
+    app.kubernetes.io/part-of: kantyna
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+      app.kubernetes.io/instance: kantyna
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: orders-api
+              app.kubernetes.io/instance: kantyna
+      ports:
+        - protocol: TCP
+          port: 5432

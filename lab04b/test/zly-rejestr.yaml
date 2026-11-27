@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zly-rejestr
+  namespace: pawel-m
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zly-rejestr
+  template:
+    metadata:
+      labels:
+        app: zly-rejestr
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27

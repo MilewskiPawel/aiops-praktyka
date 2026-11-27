@@ -3,6 +3,9 @@
 # Warunki: świeży przegląd z werdyktem MERGE, czysty diff (reguły bez modelu), zielone CI.
 # Kod 2 = komenda się nie wykona, a stderr wraca do Claude jako powód.
 
+# Bez jq nie da się odczytać komendy, więc blokujemy wszystko (fail-closed).
+command -v jq >/dev/null 2>&1 || { echo "Bramka merge: brak jq, nie mogę sprawdzić komendy. Zainstaluj jq (winget install jqlang.jq)." >&2; exit 2; }
+
 cmd=$(jq -r '.tool_input.command // empty' | tr -d '\r')   # tr: jq.exe na Windowsie kończy linie CRLF
 
 # Merge przez API omija warunki, więc nie przechodzi wcale
@@ -10,10 +13,16 @@ if grep -qE 'gh api' <<<"$cmd" && grep -qE '/merge([^a-z]|$)' <<<"$cmd"; then
   echo "Bramka merge: merge tylko przez gh pr merge <nr>, nie przez gh api." >&2
   exit 2
 fi
-grep -qE '(^|[;&|[:space:]])gh pr merge' <<<"$cmd" || exit 0
+# Flaga -R/--repo może stać przed albo po "pr" (gh -R o/r pr merge 3, gh pr -R o/r merge 3).
+# Zapamiętujemy repo, żeby sprawdzać właściwy PR, i wycinamy flagę przed dalszym parsowaniem.
+repo=$(grep -oE '(^|[[:space:]])(-R|--repo)([[:space:]]+|=)[^[:space:];&|]+' <<<"$cmd" | head -1 \
+  | sed -E 's/^[[:space:]]*(-R|--repo)([[:space:]]+|=)//; s/["'\'']//g')
+norm=$(sed -E 's/(^|[[:space:]])(-R|--repo)([[:space:]]+|=)[^[:space:];&|]+/ /g; s/[[:space:]]+/ /g' <<<"$cmd")
+grep -qE '(^|[;&|[:space:]])gh pr merge' <<<"$norm" || exit 0
+gr=(); [ -n "$repo" ] && gr=(-R "$repo")
 
 # Numer PR-a: pierwszy argument po "gh pr merge", który jest liczbą albo linkiem do PR-a
-nr=$(sed -E 's/.*gh pr merge//' <<<"$cmd" | tr ' ' '\n' | sed -E 's#.*/pull/##' | grep -m1 -E '^[0-9]+$')
+nr=$(sed -E 's/.*gh pr merge//' <<<"$norm" | tr ' ' '\n' | sed -E 's#.*/pull/##' | grep -m1 -E '^[0-9]+$')
 if [ -z "$nr" ]; then
   echo "Bramka merge: podaj numer PR-a wprost (gh pr merge <nr> --squash)." >&2
   exit 2
@@ -30,7 +39,7 @@ else
   # werdykt w tej samej linii co słowo „Werdykt” albo w linii niżej (nagłówek + wartość)
   werdykt=$(grep -iA2 -m1 'werdykt' "$plik" | tr '\n' ' ')
   grep -iqE 'werdykt[^a-z]*merge([^a-z]|$)' <<<"$werdykt" || nie "werdykt w przeglady/pr-$nr.md to nie MERGE"
-  ostatni=$(gh pr view "$nr" --json commits -q '.commits[-1].committedDate' 2>/dev/null)
+  ostatni=$(gh pr view "${gr[@]}" "$nr" --json commits -q '.commits[-1].committedDate' 2>/dev/null)
   przeglad=$(date -u -r "$plik" +%Y-%m-%dT%H:%M:%SZ)
   if [ -z "$ostatni" ]; then
     nie "nie udało się odczytać PR #$nr"
@@ -40,7 +49,7 @@ else
 fi
 
 # 2. Diff sprawdzony regułami, bez modelu: werdykt mógł być wynikiem manipulacji
-dodane=$(gh pr diff "$nr" 2>/dev/null | grep -E '^\+[^+]')
+dodane=$(gh pr diff "${gr[@]}" "$nr" 2>/dev/null | grep -E '^\+[^+]')
 # odwołania do sekretów (secretKeyRef, ${{ secrets.X }}) są w porządku
 jawne=$(grep -viE 'secretkeyref|valuefrom|secrets\.' <<<"$dodane")
 grep -iqE '(password|passwd|secret|token|api_?key)[a-z_]*"?[[:space:]]*[:=][[:space:]]*"?[^"[:space:]$]{3,}' <<<"$jawne" \
@@ -53,7 +62,7 @@ grep -iqE '(tag:[[:space:]]*"?latest|:latest([^a-z]|$))' <<<"$dodane" && nie "ob
 grep -E 'uses:[[:space:]]*[^[:space:]]+@' <<<"$dodane" | grep -qvE '@[0-9a-f]{40}' && nie "akcja nieprzypięta do pełnego SHA"
 
 # 3. CI zielone (gh pr checks: 0 = wszystko przeszło; czerwone, w toku albo brak checków = nie)
-gh pr checks "$nr" >/dev/null 2>&1 || nie "checki CI nie są zielone albo ich brak (gh pr checks $nr)"
+gh pr checks "${gr[@]}" "$nr" >/dev/null 2>&1 || nie "checki CI nie są zielone albo ich brak (gh pr checks $nr)"
 
 [ -z "$powody" ] && exit 0
 printf 'Bramka merge: PR #%s nie zostanie zmergowany.\n%sNie obchodź bramki. Pokaż człowiekowi powody.\n' "$nr" "$powody" >&2

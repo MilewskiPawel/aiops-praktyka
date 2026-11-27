@@ -1,0 +1,52 @@
+# Obrazy tylko z firmowego ECR i zawsze z konkretnym tagiem.
+# Kyverno 1.19+, ValidatingPolicy (CEL). Sprawdza containers ORAZ initContainers.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: obrazy-tylko-z-ecr
+  annotations:
+    policies.kyverno.io/title: Obrazy tylko z firmowego ECR
+    policies.kyverno.io/description: >-
+      Deploymenty i StatefulSety mogą używać wyłącznie obrazów z rejestru
+      574921529806.dkr.ecr.eu-central-1.amazonaws.com z jawnym tagiem innym niż latest.
+spec:
+  validationActions:
+    - Deny
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments", "statefulsets"]
+  variables:
+    - name: rejestr
+      expression: "'574921529806.dkr.ecr.eu-central-1.amazonaws.com/'"
+    # initContainers też uruchamiają kod - bez nich polityka ma dziurę.
+    - name: kontenery
+      expression: >-
+        object.spec.template.spec.containers +
+        object.spec.template.spec.?initContainers.orValue([])
+    - name: spozaEcr
+      expression: >-
+        variables.kontenery.filter(c, !c.image.startsWith(variables.rejestr))
+    # Tag = ':' po ostatnim '/', przed ewentualnym '@sha256:...'.
+    - name: bezTagu
+      expression: >-
+        variables.kontenery.filter(c,
+          !c.image.matches('^[^@]*/[^/@]+:[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}(@sha256:[a-f0-9]{64})?$'))
+    - name: zLatest
+      expression: >-
+        variables.kontenery.filter(c, c.image.matches(':latest(@sha256:[a-f0-9]{64})?$'))
+  validations:
+    - expression: "size(variables.spozaEcr) == 0"
+      messageExpression: >-
+        'Obraz spoza firmowego ECR (dozwolony tylko 574921529806.dkr.ecr.eu-central-1.amazonaws.com): ' +
+        variables.spozaEcr.map(c, c.name + '=' + c.image).join(', ')
+    - expression: "size(variables.bezTagu) == 0"
+      messageExpression: >-
+        'Obraz bez tagu - podaj konkretną wersję, np. :1.4.2: ' +
+        variables.bezTagu.map(c, c.name + '=' + c.image).join(', ')
+    - expression: "size(variables.zLatest) == 0"
+      messageExpression: >-
+        'Tag :latest jest zabroniony - podaj konkretną wersję: ' +
+        variables.zLatest.map(c, c.name + '=' + c.image).join(', ')

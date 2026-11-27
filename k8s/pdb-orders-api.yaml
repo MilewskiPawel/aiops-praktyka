@@ -1,0 +1,21 @@
+# PDB dla orders-api: przy dobrowolnych przerwach (drain węzła, aktualizacja node group)
+# zostaje przynajmniej jeden działający pod. maxUnavailable zamiast minAvailable,
+# bo HPA (hpa-orders-api) zmienia liczbę replik: 1 z N zawsze ma sens.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kantyna-orders-api
+  labels:
+    app.kubernetes.io/name: orders-api
+    app.kubernetes.io/instance: kantyna
+    app.kubernetes.io/component: orders-api
+    app.kubernetes.io/part-of: kantyna
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:                      # taki sam selektor jak w Deployment kantyna-orders-api
+      app.kubernetes.io/name: orders-api
+      app.kubernetes.io/instance: kantyna
+  # Pody, które i tak nie są Ready (np. CrashLoop), można usuwać bez czekania;
+  # inaczej jeden zepsuty pod blokuje drain węzła.
+  unhealthyPodEvictionPolicy: AlwaysAllow

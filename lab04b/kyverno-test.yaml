@@ -1,0 +1,21 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: obrazy-tylko-z-ecr
+policies:
+  - polityka.yaml
+resources:
+  - test/dobry.yaml
+  - test/zly.yaml
+  - test/zly-rejestr.yaml
+results:
+  - policy: obrazy-tylko-z-ecr
+    isValidatingPolicy: true
+    kind: Deployment
+    resources: [dobry]
+    result: pass
+  - policy: obrazy-tylko-z-ecr
+    isValidatingPolicy: true
+    kind: Deployment
+    resources: [zly, zly-rejestr]
+    result: fail
