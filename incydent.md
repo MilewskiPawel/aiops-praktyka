@@ -71,13 +71,13 @@
 
 ## Przyczyna źródłowa
 
-_Uzupełnić po rozwiązaniu incydentu._
+Wyciek połączeń DB wymuszony flagami w HELM
 
 ## Wnioski i działania następcze
 
 | Działanie | Właściciel | Termin | Status |
 |-----------|-----------|--------|--------|
-| _np. dodać alert na X_ | _kto_ | _data_ | _otwarte_ |
+| Utworzenie alertu dla zmian w plikach konfiguracyjnych dla połączeń z bazą danych | DevOps | max 2026-12-27 (30 dni od 2026-11-27) | otwarte |
 
 ## Co poszło dobrze / co poprawić
 
