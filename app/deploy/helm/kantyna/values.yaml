@@ -52,6 +52,10 @@ global:
 
 # Runtime flags rendered into ConfigMap <fullname>-flags as flags.json and
 # mounted at /etc/kantyna/flags/. Services reload this file periodically.
+# UWAGA: ConfigMap flag jest zarządzany przez Helm. Ręczne zmiany (kubectl patch/edit) są
+# nadpisywane przy kolejnym `helm upgrade`, a w incydencie 2026-11-27 (INC-2026-11-27-01)
+# ręcznie włączone db_pool_leak i slow_menu_query wyczerpały pulę połączeń orders-api.
+# Wartości produkcyjne/domyślne: wszystkie flagi wyłączone (false / 0). Zmiany flag tylko przez PR.
 flags:
   orders-api:
     error_rate: 0.0
