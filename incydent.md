@@ -36,6 +36,9 @@
 | 15:42 | Claude | Weryfikacja po zmianie (ok. 20 s po patchu): logi orders-api, `setup/check.sh` | Nadal **8/11**; orders-api 0/2 Ready, logi dalej „couldn't get a connection after 30 sec”. Same flagi nie zwolniły już zajętych połączeń w puli — wymagany restart (runbook KantynaDBPoolExhausted, akcja „Restart orders-api”) |
 | 15:43 | Claude (na polecenie użytkownika) | **Zmiana:** `kubectl -n pawel-m rollout restart deploy/kantyna-orders-api` (runbook KantynaDBPoolExhausted, akcja safe) | Rollout zakończony ok. 15:43:40; nowe pody `7877648c74-mgrz4` i `-p24sc` 1/1 Ready, stare usunięte |
 | 15:44 | Claude | Weryfikacja po restarcie: `setup/check.sh`, logi orders-api | **SUKCES: 11/11**; w logach `Order created` i `POST /pay → 200 OK`, brak „couldn't get a connection” |
+| 15:50 | Claude | Prześledzenie pochodzenia flag: `app/deploy/helm/kantyna/values.yaml` (git), `managedFields` ConfigMapu, `audit.jsonl` agenta | W git (`5c02737`, jedyny commit values.yaml) flagi są `false`; `true` pojawiło się tylko w klastrze przez `kubectl patch` (14:26:56 UTC) — poza Helmem i poza git. Agent z lab06 tylko odczytywał flagi (reset odrzucony), nie ustawiał `true` |
+| 15:5x | Claude | Branch `fix/flags-revert-db-pool-leak`, PR do forka: komentarz ostrzegawczy w `values.yaml` + dziennik incydentu | link do PR w komentarzu po utworzeniu |
+| _HH:MM_ | _kto_ | Rozwiązanie / potwierdzenie powrotu do normy | _link do metryk_ |
 
 ## Hipotezy
 
@@ -49,7 +52,8 @@
 
 - [x] Ustawienie `db_pool_leak=false` i `slow_menu_query=false` w ConfigMapie `kantyna-flags` — Claude, wykonane 15:41 (bez efektu na gotowość podów)
 - [x] Restart `kantyna-orders-api` — Claude, wykonane 15:43; przywrócił gotowość (check.sh 11/11)
-- [ ] Trwałe ustawienie flag w wartościach Helm (ConfigMap zarządzany przez Helm; ręczna zmiana zostanie nadpisana) — do ustalenia
+- [x] Wartości Helm w repo już mają flagi `false` (brak dryfu w git); PR dodaje ostrzeżenie w `values.yaml` — Claude, 15:5x
+- [ ] Sprawdzić, czy `helm get values` release `kantyna` w `pawel-m` nie nadpisuje flag (odczyt sekretów Helm niedostępny dla Claude)
 
 ## Komunikacja
 
