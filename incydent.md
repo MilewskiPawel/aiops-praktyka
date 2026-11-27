@@ -9,8 +9,8 @@
 | Status | 🟢 Rozwiązany (check.sh 11/11 o 15:59) — do domknięcia: komunikat, post-mortem, ustalenie autora ręcznej zmiany flag |
 | Severity | SEV1 / SEV2 / SEV3 |
 | Data wykrycia | 2026-11-27 15:36 (UTC+1) |
-| Dowódca incydentu (IC) | _imię_ |
-| Osoba prowadząca dziennik | _imię_ |
+| Dowódca incydentu (IC) | Użytkownik (MilewskiPawel) |
+| Osoba prowadząca dziennik | Użytkownik (MilewskiPawel) |
 | Dotknięte usługi | orders-api (obie repliki), namespace pawel-m |
 | Wpływ na użytkowników | menu i zamówienia przez web niedostępne (check.sh 8/11) |
 
@@ -81,5 +81,5 @@ Wyciek połączeń DB wymuszony flagami w HELM
 
 ## Co poszło dobrze / co poprawić
 
-- **Dobrze:** _…_
-- **Do poprawy:** _…_
+- **Dobrze:** Błyskawiczna właściwa diagnoza
+- **Do poprawy:** Monitoring zmian w HELM i puli połączeń na bazie
