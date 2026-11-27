@@ -6,7 +6,7 @@
 |------|---------|
 | ID incydentu | INC-2026-11-27-01 |
 | Tytuł | orders-api niegotowe (0/1 Ready) w namespace pawel-m — podejrzenie wycieku puli połączeń DB |
-| Status | 🟡 Mitygacja zakończona (serwis działa, 11/11) — do domknięcia: trwałe flagi w Helm, przyczyna zmiany flag |
+| Status | 🟡 Mitygacja zakończona (serwis działa, 11/11) — do domknięcia: weryfikacja `helm get values`, ewentualny `helm upgrade`, przyczyna zmiany flag |
 | Severity | SEV1 / SEV2 / SEV3 |
 | Data wykrycia | 2026-11-27 15:36 (UTC+1) |
 | Dowódca incydentu (IC) | _imię_ |
@@ -40,6 +40,7 @@
 | 15:5x | Claude | Branch `fix/flags-revert-db-pool-leak`, PR do forka: komentarz ostrzegawczy w `values.yaml` + dziennik incydentu | PR: https://github.com/MilewskiPawel/aiops-praktyka/pull/4 |
 | 15:5x | Claude | Weryfikacja hipotezy wycieku połączeń: ponowna próba `pg_stat_activity` (exec w postgres) + metryki `db_pool_connections_in_use` (Prometheus, 90 min) + kod `app/orders-api/app/db.py` | `exec` ponownie odrzucony przez klasyfikator. Metryki: oba stare pody orders-api — pula 0 do 15:28 (UTC+1), 0→2→**10** i **stałe 10** do restartu (15:43), mimo ruchu z loadgen; nowe pody po restarcie: 0. Kod: `db_pool_leak` = `leak_one_connection()` pobiera połączenie z puli i **nie zwraca** (`_held_connections`) |
 | 15:55 | Użytkownik | **Ręczna akceptacja PR #4** (https://github.com/MilewskiPawel/aiops-praktyka/pull/4) — zgłoszona przez użytkownika | Wpis na polecenie użytkownika. W momencie zapisu GitHub pokazuje PR jako OPEN, bez zatwierdzenia (reviewDecision puste) i bez merge — akceptacja nie jest odnotowana w GitHubie |
+| 15:55 | Użytkownik (`MilewskiPawel`) | **Merge PR #4** do `main` (squash) | GitHub: `MERGED`, `mergedAt` 2026-11-27T14:55:48Z, commit `f6296ca`. Merge zmienia tylko repo (komentarz w `values.yaml` + dziennik); **nie wykonano `helm upgrade`**, klaster bez zmian — flagi w ConfigMapie nadal ustawione ręcznie na `false` |
 | _HH:MM_ | _kto_ | Rozwiązanie / potwierdzenie powrotu do normy | _link do metryk_ |
 
 ## Hipotezy
@@ -55,6 +56,7 @@
 - [x] Ustawienie `db_pool_leak=false` i `slow_menu_query=false` w ConfigMapie `kantyna-flags` — Claude, wykonane 15:41 (bez efektu na gotowość podów)
 - [x] Restart `kantyna-orders-api` — Claude, wykonane 15:43; przywrócił gotowość (check.sh 11/11)
 - [x] Wartości Helm w repo już mają flagi `false` (brak dryfu w git); PR dodaje ostrzeżenie w `values.yaml` — Claude, 15:5x
+- [x] PR #4 zmergowany do `main` (15:55, `f6296ca`)
 - [ ] Sprawdzić, czy `helm get values` release `kantyna` w `pawel-m` nie nadpisuje flag (odczyt sekretów Helm niedostępny dla Claude)
 
 ## Komunikacja
