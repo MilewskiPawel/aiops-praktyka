@@ -66,7 +66,8 @@
 
 | Czas | Kanał | Odbiorcy | Treść |
 |------|-------|----------|-------|
-| _HH:MM_ | _Slack / mail / status page_ | _kto_ | _skrót komunikatu_ |
+| 15:27 | Slack | Użytkownicy Kantyna | Awaria systemu, system zostanie przywrócony ASAP. |
+| 16:00 | Slack | Użytkownicy Kantyna | Awaria została usunięta, system pracuje poprawnie. |
 
 ## Przyczyna źródłowa
 
