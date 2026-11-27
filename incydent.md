@@ -51,8 +51,8 @@
 | # | Hipoteza | Status | Dowody |
 |---|----------|--------|--------|
 | 1 | Wyciek połączeń DB wymuszony flagą `orders-api.db_pool_leak=true` (runbook KantynaDBPoolExhausted) | ✅ Potwierdzona po stronie aplikacji (metryki puli + kod); ❓ po stronie Postgresa niezweryfikowana (`pg_stat_activity` zablokowane; po restarcie połączenia i tak zwolnione) | ConfigMap `kantyna-flags`: `db_pool_leak: true`; log „couldn't get a connection after 30 sec” |
-| 2 | `slow_menu_query=true` pogłębia zajętość puli | ❓ Mechanizm istnieje, wpływ **nieudowodniony** (zakłócony równoczesną flagą `db_pool_leak`; z przyczyną nie ma potrzeby go zakładać) | `db.fetch_menu(slow=True)`: N+1 zapytań na jednym połączeniu → dłuższe przetrzymanie 1 połączenia na żądanie `/api/menu`, ale zwalniane po żądaniu. Pula stała na 10/10 wymaga połączeń nigdy niezwracanych — to `leak_one_connection()` (30% żądań `/api/menu`). Brak okna z samą `slow_menu_query` |
-| 3 | Postgres osiągnął `max_connections` | ❓ Do sprawdzenia | brak danych — `pg_stat_activity` niezweryfikowane (exec odrzucony) |
+| 2 | `slow_menu_query=true` pogłębia zajętość puli | wyczerpanie puli w pełni tłumaczy sam wyciek, więc nie trzeba zakładać wpływu slow_menu_query. Żeby to rozstrzygnąć, trzeba by włączyć tę flagę samą, na osobnym środowisku (nie w pawel-m) | `db.fetch_menu(slow=True)`: N+1 zapytań na jednym połączeniu → dłuższe przetrzymanie 1 połączenia na żądanie `/api/menu`, ale zwalniane po żądaniu. Pula stała na 10/10 wymaga połączeń nigdy niezwracanych — to `leak_one_connection()` (30% żądań `/api/menu`). Brak okna z samą `slow_menu_query` |
+| 3 | Postgres osiągnął `max_connections` | wyczerpanie puli w pełni tłumaczy sam wyciek, więc nie trzeba zakładać wpływu slow_menu_query. Żeby to rozstrzygnąć, trzeba by włączyć tę flagę samą, na osobnym środowisku (nie w pawel-m) | brak danych — `pg_stat_activity` niezweryfikowane (exec odrzucony) |
 
 ## Podjęte działania
 
