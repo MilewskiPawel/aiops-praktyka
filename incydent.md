@@ -78,6 +78,7 @@ Wyciek połączeń DB wymuszony flagami w HELM
 | Działanie | Właściciel | Termin | Status |
 |-----------|-----------|--------|--------|
 | Utworzenie alertu dla zmian w plikach konfiguracyjnych dla połączeń z bazą danych | DevOps | max 2026-12-27 (30 dni od 2026-11-27) | otwarte |
+| Zweryfikować autora ręcznego `kubectl patch` ConfigMapu `kantyna-flags` (2026-11-27 14:26:56 UTC) przez audyt API EKS: jeśli logi `audit` płaszczyzny sterowania są włączone, szukać w CloudWatch Logs (grupa `/aws/eks/<klaster>/cluster`), zapytanie Logs Insights: `verb="patch"`, `objectRef.resource="configmaps"`, `objectRef.name="kantyna-flags"`, `objectRef.namespace="pawel-m"`, okno 14:26–14:28 UTC; wpis zawiera `user.username` (rola IAM / użytkownik) i `sourceIPs`. Do ustalenia: czy logi `audit` są włączone i czy są uprawnienia | _do ustalenia_ | _do ustalenia_ | otwarte |
 
 ## Co poszło dobrze / co poprawić
 
