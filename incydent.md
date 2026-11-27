@@ -7,7 +7,7 @@
 | ID incydentu | INC-2026-11-27-01 |
 | Tytuł | orders-api niegotowe (0/1 Ready) w namespace pawel-m — podejrzenie wycieku puli połączeń DB |
 | Status | 🟢 Rozwiązany (check.sh 11/11 o 15:59) — do domknięcia: komunikat, post-mortem, ustalenie autora ręcznej zmiany flag |
-| Severity | SEV1 / SEV2 / SEV3 |
+| Severity | SEV2 |
 | Data wykrycia | 2026-11-27 15:36 (UTC+1) |
 | Dowódca incydentu (IC) | Użytkownik (MilewskiPawel) |
 | Osoba prowadząca dziennik | Użytkownik (MilewskiPawel) |
