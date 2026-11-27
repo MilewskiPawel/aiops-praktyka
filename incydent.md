@@ -38,13 +38,14 @@
 | 15:44 | Claude | Weryfikacja po restarcie: `setup/check.sh`, logi orders-api | **SUKCES: 11/11**; w logach `Order created` i `POST /pay → 200 OK`, brak „couldn't get a connection” |
 | 15:50 | Claude | Prześledzenie pochodzenia flag: `app/deploy/helm/kantyna/values.yaml` (git), `managedFields` ConfigMapu, `audit.jsonl` agenta | W git (`5c02737`, jedyny commit values.yaml) flagi są `false`; `true` pojawiło się tylko w klastrze przez `kubectl patch` (14:26:56 UTC) — poza Helmem i poza git. Agent z lab06 tylko odczytywał flagi (reset odrzucony), nie ustawiał `true` |
 | 15:5x | Claude | Branch `fix/flags-revert-db-pool-leak`, PR do forka: komentarz ostrzegawczy w `values.yaml` + dziennik incydentu | PR: https://github.com/MilewskiPawel/aiops-praktyka/pull/4 |
+| 15:5x | Claude | Weryfikacja hipotezy wycieku połączeń: ponowna próba `pg_stat_activity` (exec w postgres) + metryki `db_pool_connections_in_use` (Prometheus, 90 min) + kod `app/orders-api/app/db.py` | `exec` ponownie odrzucony przez klasyfikator. Metryki: oba stare pody orders-api — pula 0 do 15:28 (UTC+1), 0→2→**10** i **stałe 10** do restartu (15:43), mimo ruchu z loadgen; nowe pody po restarcie: 0. Kod: `db_pool_leak` = `leak_one_connection()` pobiera połączenie z puli i **nie zwraca** (`_held_connections`) |
 | _HH:MM_ | _kto_ | Rozwiązanie / potwierdzenie powrotu do normy | _link do metryk_ |
 
 ## Hipotezy
 
 | # | Hipoteza | Status | Dowody |
 |---|----------|--------|--------|
-| 1 | Wyciek połączeń DB wymuszony flagą `orders-api.db_pool_leak=true` (runbook KantynaDBPoolExhausted) | ❓ Silna, brak potwierdzenia po stronie Postgresa | ConfigMap `kantyna-flags`: `db_pool_leak: true`; log „couldn't get a connection after 30 sec” |
+| 1 | Wyciek połączeń DB wymuszony flagą `orders-api.db_pool_leak=true` (runbook KantynaDBPoolExhausted) | ✅ Potwierdzona po stronie aplikacji (metryki puli + kod); ❓ po stronie Postgresa niezweryfikowana (`pg_stat_activity` zablokowane; po restarcie połączenia i tak zwolnione) | ConfigMap `kantyna-flags`: `db_pool_leak: true`; log „couldn't get a connection after 30 sec” |
 | 2 | `slow_menu_query=true` pogłębia zajętość puli | ❓ Do sprawdzenia | ta sama flaga w ConfigMap |
 | 3 | Postgres osiągnął `max_connections` | ❓ Do sprawdzenia | brak danych — `pg_stat_activity` niezweryfikowane (exec odrzucony) |
 
