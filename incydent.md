@@ -44,13 +44,14 @@
 | 15:57 | Użytkownik (`MilewskiPawel`; poza sesją Claude) | Wykryto `helm Apply` na ConfigMapie `kantyna-flags` i Deploymencie `kantyna-orders-api` (`managedFields`: manager `helm`, 14:57:07Z / 14:57:09Z) — po merge PR #4; pody orders-api odtworzone (nowy ReplicaSet `7784c97c98`) | ConfigMap po upgrade: `db_pool_leak=false`, `slow_menu_query=false` — Helm nie przywrócił `true`, dryf usunięty. Wykonawca wskazany przez użytkownika; Claude tego upgrade'u nie wykonywał |
 | 15:59 | Claude | **Zakończenie diagnozy** — kontrola końcowa `setup/check.sh` (namespace pawel-m) | **SUKCES: 11/11** (11 ✅, 0 ❌). orders-api 2/2 Ready (pody 2–3 min), menu i zamówienie przez web działają |
 | 15:59 | Claude | Zamknięcie diagnozy | Przyczyna: ręczne włączenie flag `db_pool_leak` i `slow_menu_query` (`kubectl patch`, 15:26:56). Naprawa: flagi `false` + restart; stan utrwalony przez Helm |
+| 16:03 | Claude | Weryfikacja hipotezy 2 (`slow_menu_query`): kod `runtime.menu_uses_n_plus_one()`, `main.get_menu`, `db.fetch_menu`; p95 orders-api (Prometheus, 45 min) | p95: 4,75 ms (przed) → 10 s (awaria, 15:30–15:42 UTC+1, pula 10/10) → ok. 20 ms (po naprawie). Obie flagi włączone jednocześnie, więc efektu `slow_menu_query` nie da się wydzielić. Wniosek: nie udowodniono wpływu na zajętość puli; wyczerpanie wyjaśnia sam wyciek |
 
 ## Hipotezy
 
 | # | Hipoteza | Status | Dowody |
 |---|----------|--------|--------|
 | 1 | Wyciek połączeń DB wymuszony flagą `orders-api.db_pool_leak=true` (runbook KantynaDBPoolExhausted) | ✅ Potwierdzona po stronie aplikacji (metryki puli + kod); ❓ po stronie Postgresa niezweryfikowana (`pg_stat_activity` zablokowane; po restarcie połączenia i tak zwolnione) | ConfigMap `kantyna-flags`: `db_pool_leak: true`; log „couldn't get a connection after 30 sec” |
-| 2 | `slow_menu_query=true` pogłębia zajętość puli | ❓ Do sprawdzenia | ta sama flaga w ConfigMap |
+| 2 | `slow_menu_query=true` pogłębia zajętość puli | ❓ Mechanizm istnieje, wpływ **nieudowodniony** (zakłócony równoczesną flagą `db_pool_leak`; z przyczyną nie ma potrzeby go zakładać) | `db.fetch_menu(slow=True)`: N+1 zapytań na jednym połączeniu → dłuższe przetrzymanie 1 połączenia na żądanie `/api/menu`, ale zwalniane po żądaniu. Pula stała na 10/10 wymaga połączeń nigdy niezwracanych — to `leak_one_connection()` (30% żądań `/api/menu`). Brak okna z samą `slow_menu_query` |
 | 3 | Postgres osiągnął `max_connections` | ❓ Do sprawdzenia | brak danych — `pg_stat_activity` niezweryfikowane (exec odrzucony) |
 
 ## Podjęte działania
